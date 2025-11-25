@@ -15,6 +15,7 @@ import {
   Divider,
   Stack
 } from "@mui/material";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import DownloadIcon from "@mui/icons-material/Download";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -99,6 +100,19 @@ export default function App() {
   const [lapProgress, setLapProgress] = useState(0); // 0-1
   const [tyreGrip, setTyreGrip] = useState(1.2); // multiplicador de grip
   const [trackCondition, setTrackCondition] = useState("sec"); // sec, pluja, aire_brut
+  const isMobile = useMediaQuery("(max-width: 900px)");
+  const isPortrait = useMediaQuery("(orientation: portrait)");
+  const layoutDirection = isMobile && isPortrait ? "column" : "row";
+
+  useEffect(() => {
+    if (isMobile) {
+      setShowControls(false);
+      setShowKPIs(false);
+    } else {
+      setShowControls(true);
+      setShowKPIs(true);
+    }
+  }, [isMobile]);
 
   // ===== Core calculations =====
   const v = kmhToMs(speed);
@@ -330,9 +344,38 @@ export default function App() {
         </Box>
       </Box>
 
-      {/* Three Column Layout */}
-      <Box sx={{ display: "flex", flex: 1, overflowX: "hidden" }}>
-        {/* Column 1: Controls (Left) */}
+      {isMobile && (
+        <Stack direction="row" spacing={1.5} sx={{ p: 2, bgcolor: "#e0f2fe", borderBottom: "1px solid #cbd5f5" }}>
+          <Button
+            variant={showControls ? "contained" : "outlined"}
+            color="primary"
+            size="small"
+            onClick={() => setShowControls((v) => !v)}
+          >
+            {showControls ? "Amaga controls" : "Mostra controls"}
+          </Button>
+          <Button
+            variant={showKPIs ? "contained" : "outlined"}
+            color="primary"
+            size="small"
+            onClick={() => setShowKPIs((v) => !v)}
+          >
+            {showKPIs ? "Amaga resultats" : "Mostra resultats"}
+          </Button>
+        </Stack>
+      )}
+
+      {/* Responsive Layout */}
+      <Box
+        sx={{
+          display: "flex",
+          flex: 1,
+          flexDirection: layoutDirection,
+          overflowX: "hidden",
+          gap: isMobile ? 2 : 0
+        }}
+      >
+        {/* Controls Panel */}
         {showControls ? (
           <ControlsPanel
             speed={speed}
@@ -353,9 +396,11 @@ export default function App() {
             setRho={setRho}
             setPreset={setPreset}
             saveSnapshot={saveSnapshot}
+            isMobile={isMobile}
             onCollapse={() => setShowControls(false)}
           />
         ) : (
+          !isMobile && (
           <Box
             sx={{
               width: 28,
@@ -377,10 +422,11 @@ export default function App() {
               </IconButton>
             </Tooltip>
           </Box>
+          )
         )}
 
-        {/* Column 2: Main Tabs (Center) */}
-        <Box sx={{ flex: 1, overflowY: "auto", bgcolor: "#fff", p: 3 }}>
+        {/* Main Content */}
+        <Box sx={{ flex: 1, overflowY: "auto", bgcolor: "#fff", p: isMobile ? 2 : 3 }}>
             <Tabs
               value={tab}
               onChange={(_, v) => setTab(v)}
@@ -1142,10 +1188,17 @@ export default function App() {
           </Box>
         </Box>
 
-        {/* Column 3: KPIs (Right) */}
+        {/* KPI Panel */}
         {showKPIs ? (
-          <KpiPanel current={current} snapshot={snapshot} drs={drs} onCollapse={() => setShowKPIs(false)} />
+          <KpiPanel
+            current={current}
+            snapshot={snapshot}
+            drs={drs}
+            isMobile={isMobile}
+            onCollapse={() => setShowKPIs(false)}
+          />
         ) : (
+          !isMobile && (
           <Box
             sx={{
               width: 28,
@@ -1167,6 +1220,7 @@ export default function App() {
               </IconButton>
             </Tooltip>
           </Box>
+          )
         )}
       </Box>
     </Box>

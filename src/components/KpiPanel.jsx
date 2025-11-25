@@ -5,24 +5,27 @@ import KPI from "./KPI.jsx";
 const PANEL_BG = "#0b1f4d";
 const PANEL_BORDER = "#1d4ed8";
 
-export default function KpiPanel({ current, snapshot, drs, onCollapse }) {
+export default function KpiPanel({ current, snapshot, drs, onCollapse, isMobile = false }) {
   return (
     <Box
       sx={{
-        width: 260,
+        width: isMobile ? "100%" : 260,
         flexShrink: 0,
         overflowY: "auto",
-        borderLeft: `1px solid ${PANEL_BORDER}`,
+        borderLeft: isMobile ? "none" : `1px solid ${PANEL_BORDER}`,
+        borderTop: isMobile ? `1px solid ${PANEL_BORDER}` : "none",
         bgcolor: PANEL_BG,
         color: "#e2e8f0",
-        p: 2
+        p: 2,
+        borderRadius: isMobile ? 2 : 0,
+        boxShadow: isMobile ? "0 8px 18px rgba(15,23,42,0.18)" : "none"
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
         <Typography variant="h6" fontWeight={600} sx={{ color: "#f8fafc" }}>
           Resultats
         </Typography>
-        {onCollapse && (
+        {onCollapse && !isMobile && (
           <IconButton size="small" onClick={onCollapse} sx={{ color: "#c7d2fe" }}>
             <ChevronRightIcon fontSize="small" />
           </IconButton>

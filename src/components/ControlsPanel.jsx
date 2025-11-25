@@ -36,34 +36,44 @@ export default function ControlsPanel({
   setRho,
   setPreset,
   saveSnapshot,
-  onCollapse
+  onCollapse,
+  isMobile = false
 }) {
   const [showPresetInfo, setShowPresetInfo] = useState(false);
 
   return (
     <Box
       sx={{
-        width: 320,
+        width: isMobile ? "100%" : 320,
         flexShrink: 0,
-        borderRight: "1px solid #e5e7eb",
+        borderRight: isMobile ? "none" : "1px solid #e5e7eb",
+        borderBottom: isMobile ? "1px solid #e5e7eb" : "none",
         bgcolor: "#f8fafc",
         p: 2,
         display: "flex",
-        flexDirection: "column"
+        flexDirection: "column",
+        borderRadius: isMobile ? 2 : 0,
+        boxShadow: isMobile ? "0 8px 18px rgba(15,23,42,0.08)" : "none"
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
         <Typography variant="h6" fontWeight={600}>
           Paràmetres
         </Typography>
-        {onCollapse && (
+        {onCollapse && !isMobile && (
           <IconButton size="small" onClick={onCollapse} sx={{ color: "#1d4ed8" }}>
             <ChevronLeftIcon fontSize="small" />
           </IconButton>
         )}
       </Box>
 
-      <Box sx={{ flex: 1, overflowY: "auto", pr: 1 }}>
+      <Box
+        sx={{
+          flex: isMobile ? "0 0 auto" : 1,
+          overflowY: isMobile ? "visible" : "auto",
+          pr: isMobile ? 0 : 1
+        }}
+      >
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
           <Button variant="outlined" size="small" fullWidth onClick={() => setPreset("Monza")}>
             Monza
@@ -96,9 +106,9 @@ export default function ControlsPanel({
           </Stack>
           <Collapse in={showPresetInfo}>
             <Typography variant="caption" sx={{ color: "#0f172a", lineHeight: 1.5 }}>
-              Monza té rectes molt llargues i afavoreix configuracions de poc drag (ales més planes i DRS
-              obert). Monaco és ple de corbes lentes: cal més càrrega, angles més alts i el DRS tancat
-              per maximitzar el grip.
+              Monza té rectes llargues i busca minimitzar el drag (ales més planes, DRS obert). Monaco és
+              tot corbes lentes, així que necessites més càrrega, angles més alts i el DRS tancat per maximitzar
+              el grip.
             </Typography>
           </Collapse>
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
@@ -178,12 +188,7 @@ export default function ControlsPanel({
           hint="Òptim entre 10-15°."
         />
 
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          sx={{ mt: 2, mb: 2 }}
-        >
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, mb: 2 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
             <Switch checked={drs} onChange={(e) => setDrs(e.target.checked)} />
             <Typography variant="body2" sx={{ color: "#0f172a" }}>
@@ -197,9 +202,11 @@ export default function ControlsPanel({
             value={rho}
             onChange={(e) => setRho(parseFloat(e.target.value || "1.225"))}
             inputProps={{ step: 0.005 }}
-            sx={{ width: 160, "& .MuiInputBase-input": { color: "#0f172a" } }}
+            sx={{ width: isMobile ? "55%" : 160, "& .MuiInputBase-input": { color: "#0f172a" } }}
           />
         </Stack>
+
+        {!isMobile && <Divider sx={{ my: 2 }} />}
       </Box>
     </Box>
   );
