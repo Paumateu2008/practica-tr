@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -5,11 +6,15 @@ import {
   Button,
   Switch,
   Divider,
-  TextField
+  TextField,
+  IconButton,
+  Collapse
 } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ReplayIcon from "@mui/icons-material/Replay";
 import SaveAltIcon from "@mui/icons-material/SaveAlt";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import LabeledSlider from "./LabeledSlider.jsx";
 
 export default function ControlsPanel({
@@ -30,60 +35,172 @@ export default function ControlsPanel({
   rho,
   setRho,
   setPreset,
-  saveSnapshot
+  saveSnapshot,
+  onCollapse
 }) {
+  const [showPresetInfo, setShowPresetInfo] = useState(false);
+
   return (
-    <Box sx={{
-      width: 300,
-      flexShrink: 0,
-      overflowY: "auto",
-      borderRight: "1px solid #e5e7eb",
-      bgcolor: "#fafafa",
-      p: 2
-    }}>
-      <Typography variant="h6" fontWeight={600} gutterBottom>
-        Paràmetres
-      </Typography>
-
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <Button variant="outlined" size="small" fullWidth onClick={() => setPreset("Monza")}>Monza</Button>
-        <Button variant="outlined" size="small" fullWidth onClick={() => setPreset("Monaco")}>Monaco</Button>
-      </Stack>
-
-      <LabeledSlider label="Velocitat (km/h)" value={speed} setValue={setSpeed} min={60} max={360} step={5} hint="Afecta totes les forces via V²." />
-      <LabeledSlider label="Ala davanter (°)" value={frontAoA} setValue={setFrontAoA} min={0} max={20} step={1} hint="Més angle → més càrrega i drag." />
-      <LabeledSlider label="Ala posterior (°)" value={rearAoA} setValue={setRearAoA} min={0} max={22} step={1} hint="Similar a l'ala davanter." />
-      <LabeledSlider label="Alçada terra (mm)" value={rideHeight} setValue={setRideHeight} min={20} max={80} step={1} hint="Més baix → més efecte terra." />
-      <LabeledSlider label="Efic. difusor (×)" value={diffuserEff} setValue={setDiffuserEff} min={0.5} max={1.5} step={0.01} hint="Multiplica càrrega terra." />
-      <LabeledSlider label="Angle difusor (°)" value={diffuserAngle} setValue={setDiffuserAngle} min={5} max={25} step={0.5} hint="Òptim: 10-15°" />
-
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, mb: 2 }}>
-        <Switch checked={drs} onChange={(e) => setDrs(e.target.checked)} />
-        <Typography variant="body2">DRS {drs ? "obert" : "tancat"}</Typography>
-      </Stack>
-
-      <Divider sx={{ my: 2 }} />
-
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="caption" display="block" gutterBottom>Densitat aire ρ (kg/m³)</Typography>
-        <TextField
-          type="number"
-          size="small"
-          fullWidth
-          value={rho}
-          onChange={(e) => setRho(parseFloat(e.target.value || "1.225"))}
-          inputProps={{ step: 0.005 }}
-        />
+    <Box
+      sx={{
+        width: 320,
+        flexShrink: 0,
+        borderRight: "1px solid #e5e7eb",
+        bgcolor: "#f8fafc",
+        p: 2,
+        display: "flex",
+        flexDirection: "column"
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Typography variant="h6" fontWeight={600}>
+          Paràmetres
+        </Typography>
+        {onCollapse && (
+          <IconButton size="small" onClick={onCollapse} sx={{ color: "#1d4ed8" }}>
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+        )}
       </Box>
 
-      <Stack direction="row" spacing={1}>
-        <Button variant="contained" size="small" fullWidth onClick={saveSnapshot} startIcon={<SaveAltIcon />}>
-          Guardar
-        </Button>
-        <Button variant="outlined" size="small" onClick={() => window.location.reload()} startIcon={<ReplayIcon />}>
-          Reset
-        </Button>
-      </Stack>
+      <Box sx={{ flex: 1, overflowY: "auto", pr: 1 }}>
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          <Button variant="outlined" size="small" fullWidth onClick={() => setPreset("Monza")}>
+            Monza
+          </Button>
+          <Button variant="outlined" size="small" fullWidth onClick={() => setPreset("Monaco")}>
+            Monaco
+          </Button>
+        </Stack>
+
+        <Box
+          sx={{
+            mb: 2,
+            p: 1.5,
+            bgcolor: "#e0f2fe",
+            border: "1px solid #bae6fd",
+            borderRadius: 1
+          }}
+        >
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography variant="caption" sx={{ color: "#0f172a", fontWeight: 600 }}>
+              Per què varien els presets?
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setShowPresetInfo((v) => !v)}
+              sx={{ color: "#0f172a" }}
+            >
+              {showPresetInfo ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            </IconButton>
+          </Stack>
+          <Collapse in={showPresetInfo}>
+            <Typography variant="caption" sx={{ color: "#0f172a", lineHeight: 1.5 }}>
+              Monza té rectes molt llargues i afavoreix configuracions de poc drag (ales més planes i DRS
+              obert). Monaco és ple de corbes lentes: cal més càrrega, angles més alts i el DRS tancat
+              per maximitzar el grip.
+            </Typography>
+          </Collapse>
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              fullWidth
+              onClick={saveSnapshot}
+              startIcon={<SaveAltIcon />}
+            >
+              Guardar
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              fullWidth
+              onClick={() => window.location.reload()}
+              startIcon={<ReplayIcon />}
+            >
+              Reset
+            </Button>
+          </Stack>
+        </Box>
+
+        <LabeledSlider
+          label="Velocitat (km/h)"
+          value={speed}
+          setValue={setSpeed}
+          min={60}
+          max={360}
+          step={5}
+          hint="Afecta totes les forces via V²."
+        />
+        <LabeledSlider
+          label="Ala davanter (°)"
+          value={frontAoA}
+          setValue={setFrontAoA}
+          min={0}
+          max={20}
+          step={1}
+          hint="Més angle → més càrrega i drag."
+        />
+        <LabeledSlider
+          label="Ala posterior (°)"
+          value={rearAoA}
+          setValue={setRearAoA}
+          min={0}
+          max={22}
+          step={1}
+          hint="Similar a l'ala davantera."
+        />
+        <LabeledSlider
+          label="Alçada terra (mm)"
+          value={rideHeight}
+          setValue={setRideHeight}
+          min={20}
+          max={80}
+          step={1}
+          hint="Més baix → més efecte terra."
+        />
+        <LabeledSlider
+          label="Efic. difusor (-)"
+          value={diffuserEff}
+          setValue={setDiffuserEff}
+          min={0.5}
+          max={1.5}
+          step={0.01}
+          hint="Multiplica la càrrega del terra."
+        />
+        <LabeledSlider
+          label="Angle difusor (°)"
+          value={diffuserAngle}
+          setValue={setDiffuserAngle}
+          min={5}
+          max={25}
+          step={0.5}
+          hint="Òptim entre 10-15°."
+        />
+
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{ mt: 2, mb: 2 }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
+            <Switch checked={drs} onChange={(e) => setDrs(e.target.checked)} />
+            <Typography variant="body2" sx={{ color: "#0f172a" }}>
+              DRS {drs ? "obert" : "tancat"}
+            </Typography>
+          </Stack>
+          <TextField
+            type="number"
+            size="small"
+            label="Densitat aire (kg/m^3)"
+            value={rho}
+            onChange={(e) => setRho(parseFloat(e.target.value || "1.225"))}
+            inputProps={{ step: 0.005 }}
+            sx={{ width: 160, "& .MuiInputBase-input": { color: "#0f172a" } }}
+          />
+        </Stack>
+      </Box>
     </Box>
   );
 }

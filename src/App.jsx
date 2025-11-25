@@ -16,6 +16,8 @@ import {
   Stack
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import "./App.css";
 import {
@@ -300,7 +302,7 @@ export default function App() {
   const gripRatio = availableGrip > 0 ? requiredGrip / availableGrip : 0;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", overflowX: "hidden" }}>
       {/* Header */}
       <Box sx={{
         height: 80,
@@ -315,7 +317,7 @@ export default function App() {
         <img src="/logo.png" alt="Col·legi Montserrat" style={{ height: 60 }} />
         <Box sx={{ flex: 1 }}>
           <Typography variant="h5" fontWeight={700} sx={{
-            background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+            background: "linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text"
@@ -326,28 +328,12 @@ export default function App() {
             Pràctica del Treball de Recerca 2025
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
-          <Button size="small" variant="outlined" onClick={() => setShowControls((v) => !v)} sx={{
-            borderColor: "#10b981",
-            color: "#059669",
-            "&:hover": { borderColor: "#059669", bgcolor: "#f0fdf4" }
-          }}>
-            {showControls ? "Amaga controls" : "Mostra controls"}
-          </Button>
-          <Button size="small" variant="outlined" onClick={() => setShowKPIs((v) => !v)} sx={{
-            borderColor: "#10b981",
-            color: "#059669",
-            "&:hover": { borderColor: "#059669", bgcolor: "#f0fdf4" }
-          }}>
-            {showKPIs ? "Amaga resultats" : "Mostra resultats"}
-          </Button>
-        </Stack>
       </Box>
 
       {/* Three Column Layout */}
-      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <Box sx={{ display: "flex", flex: 1, overflowX: "hidden" }}>
         {/* Column 1: Controls (Left) */}
-        {showControls && (
+        {showControls ? (
           <ControlsPanel
             speed={speed}
             setSpeed={setSpeed}
@@ -367,20 +353,58 @@ export default function App() {
             setRho={setRho}
             setPreset={setPreset}
             saveSnapshot={saveSnapshot}
+            onCollapse={() => setShowControls(false)}
           />
+        ) : (
+          <Box
+            sx={{
+              width: 28,
+              flexShrink: 0,
+              borderRight: "1px solid #e5e7eb",
+              bgcolor: "#e0f2fe",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            <Tooltip title="Mostra els controls">
+              <IconButton
+                size="small"
+                onClick={() => setShowControls(true)}
+                sx={{ color: "#1d4ed8" }}
+              >
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
         )}
 
         {/* Column 2: Main Tabs (Center) */}
         <Box sx={{ flex: 1, overflowY: "auto", bgcolor: "#fff", p: 3 }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
+              sx={{
+                "& .MuiTabs-scrollButtons": {
+                  color: "#1d4ed8",
+                  opacity: 1
+                },
+                "& .MuiTabs-scrollButtons.Mui-disabled": {
+                  opacity: 0.3
+                }
+              }}
+            >
               <Tab label="Visualització" value="visual" />
-            <Tab label="Gràfiques" value="charts" />
-            <Tab label="Vista pista" value="track" />
-            <Tab label="Editor difusor" value="diffuser" />
-            <Tab label="Perfils ales" value="wings" />
-            {snapshot && <Tab label="Comparació" value="compare" />}
-            <Tab label="Aprendre" value="learn" />
-          </Tabs>
+              <Tab label="Gràfiques" value="charts" />
+              <Tab label="Perfils ales" value="wings" />
+              <Tab label="Editor difusor" value="diffuser" />
+              {snapshot && <Tab label="Comparació" value="compare" />}
+              <Tab label="Vista pista" value="track" />
+              <Tab label="Aprendre" value="learn" />
+            </Tabs>
 
           {/* Tab Content */}
           <Box sx={{ mt: 2 }}>
@@ -410,7 +434,8 @@ export default function App() {
                     </g>
                   </svg>
                   <Typography variant="caption" sx={{ position: "absolute", top: 8, left: 8, bgcolor: "rgba(255,255,255,.8)", px: 1, borderRadius: 1, color: "#0f172a" }}>
-                    Blau: càrrega · Vermell: resistència
+                    <Box component="span" sx={{ color: "#1d4ed8", fontWeight: 600 }}>Blau</Box>: càrrega ·{" "}
+                    <Box component="span" sx={{ color: "#dc2626", fontWeight: 600 }}>Vermell</Box>: resistència
                   </Typography>
                 </Box>
               </Box>
@@ -1118,7 +1143,31 @@ export default function App() {
         </Box>
 
         {/* Column 3: KPIs (Right) */}
-        {showKPIs && <KpiPanel current={current} snapshot={snapshot} drs={drs} />}
+        {showKPIs ? (
+          <KpiPanel current={current} snapshot={snapshot} drs={drs} onCollapse={() => setShowKPIs(false)} />
+        ) : (
+          <Box
+            sx={{
+              width: 28,
+              flexShrink: 0,
+              borderLeft: "1px solid #1d4ed8",
+              bgcolor: "#0b1f4d",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            <Tooltip title="Mostra els resultats">
+              <IconButton
+                size="small"
+                onClick={() => setShowKPIs(true)}
+                sx={{ color: "#bfdbfe" }}
+              >
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
       </Box>
     </Box>
   );

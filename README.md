@@ -1,70 +1,62 @@
-# Formula 1 Aerodynamics Simulator — Educational Edition
+# Simulador d'Aerodinàmica de F1 — Edició Educativa
 
-An interactive, visual learning tool designed for students to understand F1 aerodynamics. Perfect for research projects (batxillerat) and learning how aerodynamic elements work, their shapes, and how these shapes affect forces. Numbers illustrate trends; it is not an engineering-grade tool.
+Eina interactiva pensada per a estudiants que vulguin entendre les bases de l'aerodinàmica d'un monoplaça. Ideal per a treballs de recerca de batxillerat: mostra de manera visual com cada element (ales, terra, difusor, DRS…) influeix en les forces. Els valors són il·lustratius i serveixen per explicar tendències, no per a disseny d'enginyeria.
 
-## Run it locally
-- Install Node.js 20+.
-- From the repo root: `npm install` once, then `npm run dev` and open the shown local URL.
-- `npm run build` produces a production bundle; `npm run preview` serves that bundle.
+## Execució local
+- Instal·la Node.js 20 o superior.
+- Des del directori del projecte: `npm install` una vegada i, després, `npm run dev` per obrir l'URL local que aparegui al terminal.
+- `npm run build` genera el paquet de producció i `npm run preview` el serveix per fer una comprovació final.
 
-## What you see
-- **Presets**: Monza (low drag), Monaco (high downforce), Wet, Baseline. They set wing angles, ride height, and DRS.
-- **Controls** (all in the left card):
-  - Speed slider (km/h) drives all forces via V².
-  - Front/Rear wing angle of attack sliders: higher angle → more downforce and drag.
-  - Ride height slider: lower gives stronger ground effect until you get too low (stall risk).
-  - Diffuser efficiency: multiplies floor downforce.
-  - **NEW: Diffuser angle**: adjust the diffuser angle (5-25°) to see how it affects ground effect. Optimal range: 10-15°.
-  - Air density input (ρ): default 1.225 kg/m³.
-  - DRS switch: open reduces rear wing drag and some rear downforce.
-  - Snapshot button: save the current setup to compare against later; Reset reloads the default.
-- **On-car sketch**: blue arrows show downforce at front/rear, red shows drag. Length is relative to the current total.
-- **KPIs**: total downforce, total drag, front balance %, floor downforce, and wing Cl/Cd values (rear shows "DRS" when open).
-- **Interactive Tabs**:
-  - **Forces vs speed**: line chart of downforce/drag and each axle vs speed; export CSV if you want the numbers.
-  - **Ride height map**: downforce and front balance vs ride height at the current speed, with a marker at your setting.
-  - **NEW: Interactive diffuser editor**: visualize how the diffuser shape changes with angle, see real-time airflow, and understand the Venturi effect.
-  - **NEW: Wing profiles**: see airfoil cross-sections with pressure distribution. Watch how angle of attack and DRS affect the wing shape and forces.
-  - **NEW: Force balance**: visual breakdown showing contribution of each aerodynamic element (front wing, floor, rear wing) to total downforce.
-  - **NEW: A/B Comparison**: (appears when you save a snapshot) detailed side-by-side comparison with automatic analysis of changes.
-  - **Learn**: formulas, suggested investigations, and educational content.
-  - **Aero elements**: zoomable view with clickable elements that show detailed explanations of each aerodynamic component.
+## Què veuràs
+- **Presets** (esquerra): Monza (baix drag), Monaco (alta càrrega), Wet i Baseline. Ajusten angles d'ala, alçada i estat del DRS.
+- **Panell de control**:
+  - *Velocitat (km/h)*: totes les forces escalen amb V².
+  - *Angles de les ales davantera i posterior*: més angle = més càrrega però també més drag.
+  - *Alçada al terra*: l'efecte terra creix quan baixes, però es pot “ofegar” si vas massa baix.
+  - *Eficiència i angle del difusor (nou)*: ha estat ampliat amb un control d'angle (5‑25°) per veure com canvia l'efecte Venturi; la zona òptima continua entre 10‑15°.
+  - *Densitat de l'aire (ρ)* editable i *interruptor DRS*.
+  - *Instantània* per comparar configuracions i *Reset* per tornar al punt inicial.
+- **Visualització del cotxe**: fons blanc opac i llegenda/etiquetes en blau fosc per garantir contrast (“Blau: càrrega · Vermell: resistència”). Les fletxes blaves mostren downforce a cada eix, la vermella el drag.
+- **KPIs a la dreta**: càrrega/drag totals, balanç davant %, contribució del terra i coeficients de les ales (amb estat del DRS).
+- **Pestanyes centrals**:
+  - *Visualització*: esquema del vehicle amb vectorització de forces.
+  - *Gràfiques*: corbes de càrrega i resistència segons velocitat, exportables en CSV.
+  - *Mapa d'alçada*: variació de la càrrega i del balanç en funció de l'alçada actual.
+  - *Simulació de pista*: perfils de volta i de corba per veure grip disponible vs necessari.
+  - *Editor de difusor (nou)*: forma interactiva, flux animat i explicació del Venturi.
+  - *Perfils d'ales (nou)*: seccions d'ales amb distribució de pressions i efecte del DRS.
+  - *Balanceig de forces (nou)*: desglossa la contribució de cada element (ala davanter, terra, ala posterior).
+  - *Comparació A/B (nou)*: apareix quan guardes una instantània; mostra diferències numèriques i en percentatge.
+  - *Aprendre*: fórmules, conceptes i propostes d'investigació guiades.
+  - *Elements aero*: vista amb zoom i punts d'informació detallats.
 
-## How it works (simplified math)
-- Dynamic pressure sets the scale: q = ½·ρ·V².
-- Lift/downforce and drag use L = q·S·Cl and D = q·S·Cd with reference areas for front wing, rear wing, and floor.
-- Wings: Cl ≈ Cl0 + slope·α, Cd ≈ Cd0 + k·Cl² (captures induced drag rise with angle).
-- Ground effect floor: downforce grows as ride height drops but is capped and slightly "stalls" if too low; diffuser efficiency and angle multiply it.
-- **Diffuser angle effect**: optimal around 10-15° using a Gaussian curve; too steep or too shallow reduces effectiveness.
-- DRS: cuts rear-wing Cl to ~75% and Cd to ~65% when open.
+## Matemàtica simplificada
+- Pressió dinàmica: `q = ½ · ρ · V²`.
+- Downforce i drag: `L = q · S · Cl` i `D = q · S · Cd` amb àrees de referència per ala davantera, posterior i terra.
+- Ales: `Cl = Cl0 + slope · α`, `Cd = Cd0 + k · Cl²`, capturant l'augment de drag induït.
+- Terra (efecte terra): creix quan l'alçada baixa, però es limita i pot “stallar” si toques massa a prop. L'eficiència del difusor i el seu angle multipliquen l'efecte.
+- DRS: redueix aproximadament al 75% el Cl de l'ala posterior i al 65% el seu Cd quan és obert.
 
-## Good starter experiments for learning
-1. **Diffuser optimization**: Start in the diffuser editor tab. Change the diffuser angle from 5° to 25° and observe how the floor downforce changes. Explain why 10-15° is optimal using Bernoulli's principle.
+## Propostes d'experimentació
+1. **Optimització del difusor**: a la pestanya “Editor difusor” canvia l'angle de 5° a 25° i descriu per què 10‑15° és l'interval ideal.
+2. **Perfils d'ala**: puja l'angle de l'ala davantera de 5° a 15°, guarda instantànies i compara el compromís càrrega/drag.
+3. **Estudi del balanç**: mantén el balanç davanter entre 45‑55% mentre varies la velocitat (120‑260 km/h). Identifica quin element desestabilitza l'equilibri.
+4. **Comparació de circuits**: guarda Monza, passa a Monaco i usa la comparació A/B per quantificar el drag a 250 km/h i comentar l'impacte en el temps de volta.
+5. **Efecte DRS**: compara instantànies amb el DRS tancat i obert a 250 km/h. Explica per què ajuda en els avanços segons les gràfiques i els perfils d'ala.
+6. **Sensibilitat a l'alçada**: a 200 km/h, fes un sweep d'alçada al mapa i relaciona la zona òptima amb el que es veu a l'editor de difusor.
+7. **Exploració guiada**: a la pestanya “Elements aero”, obre cada element i comprova experimentalment el que s'explica.
 
-2. **Wing profile analysis**: Go to the wing profiles tab. Increase the front wing angle from 5° to 15° and watch the pressure distribution change. Take a snapshot at 8° and compare with 15°. Explain the downforce vs drag trade-off.
+## Funcionalitats educatives
+- Visualitzacions en temps real i animacions que reforcen conceptes.
+- Actualització instantània de les mètriques quan canvies un paràmetre.
+- Contingut explicatiu contextuat (tooltips, targetes “Aprendre”, punts clicables).
+- Sistema d'instantànies per fer comparatives i justificar conclusions.
+- Diverses perspectives del mateix fenomen (gràfiques, models, fórmules, textos).
+- Contrast millorat (fons principal blanc i etiquetes en blau fosc) per llegir fàcilment dades i llegendes.
 
-3. **Balance experiments**: Keep front balance between 45-55% while changing speed from 120-260 km/h. Use the balance tab to see which element contributes most. What setup keeps it stable?
-
-4. **Circuit comparison**: Save a snapshot with Monza preset, then switch to Monaco. Go to the A/B comparison tab to quantify the differences. How does the 250 km/h drag difference affect lap time?
-
-5. **DRS effect**: Save a snapshot with DRS closed at 250 km/h. Open DRS and check the comparison tab. Use the wing profiles tab to see how the rear wing shape changes. Explain why this helps overtaking.
-
-6. **Ride height sensitivity**: Use the ride height map at 200 km/h. Find the optimal height and explain why it exists using the diffuser editor visualization.
-
-7. **Interactive exploration**: Click on each aerodynamic element in the "Aero elements" tab to learn about its function, then experiment with its settings to verify the explanations.
-
-## Educational features
-This simulator is specifically designed for learning:
-- **Visual and interactive**: See shapes change in real-time as you adjust parameters
-- **Instant feedback**: All forces update immediately when you change settings
-- **Guided explanations**: Click on elements to get detailed educational content
-- **Comparative analysis**: Save snapshots and get automatic analysis of your changes
-- **Multiple perspectives**: View the same concept from different angles (charts, visualizations, formulas)
-- **Realistic trade-offs**: Experience the same engineering compromises F1 teams face
-
-## Limits and tips
-- Values are illustrative, not validated with real data; use them to discuss trends and trade-offs.
-- Change one parameter at a time to see cause and effect.
-- Use the snapshot feature frequently to compare different configurations.
-- If the UI looks stale, hit Reset or reload the page; snapshots clear only when you reload.
-- For research projects: take screenshots of the different tabs to illustrate concepts in your presentation.
+## Límits i consells
+- Les magnituds són aproximacions qualitatives; utilitza-les per parlar de tendències i compromisos.
+- Canvia un sol paràmetre cada vegada per entendre causa/efecte.
+- Desa instantànies sovint per documentar comparatives al teu informe.
+- Si la interfície queda fora de to, fes clic a Reset o recarrega (les instantànies es buiden només quan recarregues).
+- Per a presentacions o treballs escrits, captura pantalles de les diferents pestanyes i cita els gràfics per explicar els resultats.
