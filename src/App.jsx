@@ -409,7 +409,7 @@ export default function App() {
                       <line x1="360" y1="100" x2={360 + dragArrow} y2={100} stroke="#dc2626" strokeWidth={6} markerEnd="url(#arrow)" />
                     </g>
                   </svg>
-                  <Typography variant="caption" sx={{ position: "absolute", top: 8, left: 8, bgcolor: "rgba(255,255,255,.8)", px: 1, borderRadius: 1 }}>
+                  <Typography variant="caption" sx={{ position: "absolute", top: 8, left: 8, bgcolor: "rgba(255,255,255,.8)", px: 1, borderRadius: 1, color: "#0f172a" }}>
                     Blau: càrrega · Vermell: resistència
                   </Typography>
                 </Box>
