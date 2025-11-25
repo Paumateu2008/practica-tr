@@ -5,7 +5,7 @@ export default function LabeledSlider({ label, value, setValue, min, max, step, 
   return (
     <Box sx={{ my: 1 }}>
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ color: "#0f172a" }}>
           {label}: <b>{Number.isInteger(step) ? value : Math.round(value * 100) / 100}</b>
         </Typography>
         {hint && (
