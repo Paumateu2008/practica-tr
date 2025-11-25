@@ -1,0 +1,100 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.wind-tunnel {
+  position: relative;
+  height: 220px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(circle at 30% 40%, #eef2ff 0, #e0f2fe 30%, #f8fafc 80%);
+  border: 1px solid #e5e7eb;
+}
+
+.flow-line {
+  position: absolute;
+  left: -50%;
+  width: 70%;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.9) 35%, rgba(59,130,246,0) 100%);
+  filter: drop-shadow(0 0 6px rgba(59,130,246,0.5));
+  animation: flowMove var(--flow-duration, 6s) linear infinite;
+}
+
+.flow-line.l1 { top: 22%; animation-delay: 0s; }
+.flow-line.l2 { top: 42%; animation-delay: -0.7s; }
+.flow-line.l3 { top: 62%; animation-delay: -1.4s; }
+.flow-line.l4 { top: 82%; animation-delay: -2.1s; }
+
+.bernoulli {
+  position: relative;
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(224,242,254,0.8) 50%, rgba(226,232,240,0.8) 100%);
+  border: 1px solid #e5e7eb;
+}
+
+@keyframes flowMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(180%); }
+}
+
+.flow-path {
+  fill: none;
+  stroke: rgba(59,130,246,0.85);
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-dasharray: 140;
+  stroke-dashoffset: 280;
+  animation: flowAlong var(--flow-duration, 6s) linear infinite;
+  filter: drop-shadow(0 0 4px rgba(59,130,246,0.4));
+}
+
+.flow-path.slow {
+  stroke: rgba(14,165,233,0.8);
+  animation-duration: calc(var(--flow-duration, 6s) * 1.4);
+}
+
+@keyframes flowAlong {
+  to { stroke-dashoffset: 0; }
+}
