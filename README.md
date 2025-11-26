@@ -1,6 +1,6 @@
 # Simulador d'Aerodinàmica de F1 — Edició Educativa
 
-Eina interactiva pensada per a estudiants que vulguin entendre les bases de l'aerodinàmica d'un monoplaça. Ideal per a treballs de recerca de batxillerat: mostra de manera visual com cada element (ales, terra, difusor, DRS…) influeix en les forces. Els valors són il·lustratius i serveixen per explicar tendències, no per a disseny d'enginyeria.
+Eina interactiva pensada per a entendre les bases de l'aerodinàmica d'un monoplaça. Mostra de manera visual com cada element (alerons, difusor, terra, DRS…) influeix en les forces. Els valors són il·lustratius i serveixen per explicar tendències, no per a disseny d'enginyeria.
 
 ## Execució local
 - Instal·la Node.js 20 o superior.
