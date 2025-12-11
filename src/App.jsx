@@ -1,10 +1,9 @@
-import { useMemo, useState, useEffect } from "react";
+﻿import { useMemo, useState, useEffect } from "react";
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  Slider,
   Switch,
   TextField,
   Tooltip,
@@ -39,16 +38,12 @@ import LabeledSlider from "./components/LabeledSlider.jsx";
 
 /**************************************************************
  * Formula 1 Aerodynamics Simulator — Education Edition (MUI)
- * - English UI, student‑friendly visuals, lots of guidance.
- * - Uses MUI for UI and Recharts for plots.
- * - Not an engineering tool; numbers illustrate trends.
  **************************************************************/
 
-// ===== Simple aero model (illustrative, not real data) =====
+// ===== Simple aero model =====
 const kmhToMs = (vKmh) => vKmh / 3.6;
 const degToRad = (g) => (g * Math.PI) / 180;
 
-// Wings: Cl = Cl0 + slope*α  ;  Cd = Cd0 + k*Cl^2
 function wingAero(aoaDeg, { Cl0, slope, Cd0, k }) {
   const a = degToRad(aoaDeg);
   const Cl = Cl0 + slope * a;
@@ -56,14 +51,18 @@ function wingAero(aoaDeg, { Cl0, slope, Cd0, k }) {
   return { Cl, Cd };
 }
 
-// Ground effect: more load when lower, but stall if too low
-// Now includes diffuser angle effect
-function groundEffectCl(rideHeightMm, k, diffuserAngleDeg = 12, hOptMm = 35, saturation = 3) {
+function groundEffectCl(
+  rideHeightMm,
+  k,
+  diffuserAngleDeg = 12,
+  hOptMm = 35,
+  saturation = 3
+) {
   const h = Math.max(10, Math.min(120, rideHeightMm));
   const peak = k * (hOptMm / h);
-  const stall = h < 25 ? 0.4 + 0.6 * (h / 25) : 1; // damp when too low
-  // Diffuser angle effect: optimal around 10-15°, less effective outside this range
-  const angleBoost = 0.6 + 0.4 * Math.exp(-Math.pow((diffuserAngleDeg - 12) / 8, 2));
+  const stall = h < 25 ? 0.4 + 0.6 * (h / 25) : 1;
+  const angleBoost =
+    0.6 + 0.4 * Math.exp(-Math.pow((diffuserAngleDeg - 12) / 8, 2));
   return Math.min(peak * stall * angleBoost, saturation * k);
 }
 
@@ -72,7 +71,7 @@ function applyDRS(Cl, Cd, open) {
   return { Cl: Cl * 0.75, Cd: Cd * 0.65 };
 }
 
-// Reference areas (educational)
+// Reference areas
 const S_front = 1.3,
   S_rear = 1.5,
   S_floor = 3.2;
@@ -80,26 +79,43 @@ const S_front = 1.3,
 const frontPreset = { Cl0: 0.6, slope: 3.6, Cd0: 0.06, k: 0.08 };
 const rearPreset = { Cl0: 0.7, slope: 4.2, Cd0: 0.07, k: 0.1 };
 
+/* ------------------------------------------------------------
+   FIX: MOVEMOS downloadCSV ARRIBA PARA EVITAR ERRORES DE PARSE
+-------------------------------------------------------------*/
+function downloadCSV(rows) {
+  if (!rows || !rows.length) return;
+  const header = Object.keys(rows[0]).join(",");
+  const body = rows.map((r) => Object.values(r).join(",")).join("\n");
+  const csv = header + "\n" + body;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "aero_data.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ------------------------------------------------------------
+                COMPONENTE PRINCIPAL
+-------------------------------------------------------------*/
+
 export default function App() {
   // ===== Controls =====
-  const [speed, setSpeed] = useState(200); // km/h
-  const [rho, setRho] = useState(1.225); // kg/m³
-  const [frontAoA, setFrontAoA] = useState(8); // °
-  const [rearAoA, setRearAoA] = useState(12); // °
-  const [rideHeight, setRideHeight] = useState(38); // mm
-  const [diffuserEff, setDiffuserEff] = useState(1); // ×
+  const [speed, setSpeed] = useState(200);
+  const [rho, setRho] = useState(1.225);
+  const [frontAoA, setFrontAoA] = useState(8);
+  const [rearAoA, setRearAoA] = useState(12);
+  const [rideHeight, setRideHeight] = useState(38);
+  const [diffuserEff, setDiffuserEff] = useState(1);
   const [drs, setDrs] = useState(false);
   const [tab, setTab] = useState("visual");
-  const [snapshot, setSnapshot] = useState(null); // for A/B compare
-  const [diffuserAngle, setDiffuserAngle] = useState(12); // ° diffuser angle
-  const [selectedElement, setSelectedElement] = useState(null); // for educational annotations
+  const [snapshot, setSnapshot] = useState(null);
+  const [diffuserAngle, setDiffuserAngle] = useState(12);
+  const [selectedElement, setSelectedElement] = useState(null);
   const [showControls, setShowControls] = useState(true);
   const [showKPIs, setShowKPIs] = useState(true);
-  const [trackMode, setTrackMode] = useState("lap"); // lap | corner
-  const [playingLap, setPlayingLap] = useState(false);
-  const [lapProgress, setLapProgress] = useState(0); // 0-1
-  const [tyreGrip, setTyreGrip] = useState(1.2); // multiplicador de grip
-  const [trackCondition, setTrackCondition] = useState("sec"); // sec, pluja, aire_brut
+
   const isMobile = useMediaQuery("(max-width: 900px)");
   const isPortrait = useMediaQuery("(orientation: portrait)");
   const layoutDirection = isMobile && isPortrait ? "column" : "row";
@@ -116,19 +132,15 @@ export default function App() {
 
   // ===== Core calculations =====
   const v = kmhToMs(speed);
-  const q = 0.5 * rho * v * v; // dynamic pressure
-  const condFactor = trackCondition === "sec" ? 1 : trackCondition === "pluja" ? 0.8 : 0.9;
+  const q = 0.5 * rho * v * v;
 
   const current = useMemo(() => {
-    // wings
     const f = wingAero(frontAoA, frontPreset);
     let r = wingAero(rearAoA, rearPreset);
     r = applyDRS(r.Cl, r.Cd, drs);
-    r.Cl *= condFactor;
-    r.Cd *= condFactor;
-    // floor (ground effect)
-    const Cl_floor = groundEffectCl(rideHeight, 0.9, diffuserAngle) * diffuserEff * condFactor;
-    const Cd_floor = (0.12 + 0.02 * Cl_floor) * condFactor;
+
+    const Cl_floor = groundEffectCl(rideHeight, 0.9, diffuserAngle) * diffuserEff;
+    const Cd_floor = 0.12 + 0.02 * Cl_floor;
 
     const L_front = q * S_front * f.Cl;
     const D_front = q * S_front * f.Cd;
@@ -141,7 +153,6 @@ export default function App() {
 
     const L_total = L_front + L_rear + L_floor;
     const D_total = D_front + D_rear + D_floor;
-    const balanceFront = (L_front / L_total) * 100;
 
     return {
       L_front,
@@ -152,26 +163,42 @@ export default function App() {
       D_rear,
       D_floor,
       D_total,
-      balanceFront,
+      balanceFront: (L_front / L_total) * 100,
+      balanceRear: (L_rear / L_total) * 100,
       coeffs: { f, r, Cl_floor, Cd_floor }
     };
-  }, [frontAoA, rearAoA, rideHeight, diffuserEff, rho, v, drs, diffuserAngle, condFactor]);
+  }, [
+    frontAoA,
+    rearAoA,
+    rideHeight,
+    diffuserEff,
+    rho,
+    v,
+    drs,
+    diffuserAngle
+  ]);
 
-  // Speed sweep for charts
+  // ===== Speed sweep =====
   const sweep = useMemo(() => {
     const pts = [];
     for (let s = 60; s <= 340; s += 10) {
       const vv = kmhToMs(s);
       const qq = 0.5 * rho * vv * vv;
+
       const f = wingAero(frontAoA, frontPreset);
       let r = wingAero(rearAoA, rearPreset);
       r = applyDRS(r.Cl, r.Cd, drs);
-      const Cl_floor = groundEffectCl(rideHeight, 0.9, diffuserAngle) * diffuserEff;
+
+      const Cl_floor =
+        groundEffectCl(rideHeight, 0.9, diffuserAngle) * diffuserEff;
       const Cd_floor = 0.12 + 0.02 * Cl_floor;
-      const Lf = qq * S_front * f.Cl,
-        Lr = qq * S_rear * r.Cl,
-        Lg = qq * S_floor * Cl_floor;
+
+      const Lf = qq * S_front * f.Cl;
+      const Lr = qq * S_rear * r.Cl;
+      const Lg = qq * S_floor * Cl_floor;
+
       const D = qq * (S_front * f.Cd + S_rear * r.Cd + S_floor * Cd_floor);
+
       pts.push({
         speed: s,
         downforce: (Lf + Lr + Lg) / 1000,
@@ -182,7 +209,15 @@ export default function App() {
       });
     }
     return pts;
-  }, [frontAoA, rearAoA, rideHeight, diffuserEff, rho, drs, diffuserAngle, condFactor]);
+  }, [
+    frontAoA,
+    rearAoA,
+    rideHeight,
+    diffuserEff,
+    rho,
+    drs,
+    diffuserAngle
+  ]);
 
   const rideSweep = useMemo(() => {
     const pts = [];
@@ -190,16 +225,19 @@ export default function App() {
       const f = wingAero(frontAoA, frontPreset);
       let r = wingAero(rearAoA, rearPreset);
       r = applyDRS(r.Cl, r.Cd, drs);
+
       const Cl_floor = groundEffectCl(h, 0.9, diffuserAngle) * diffuserEff;
-      const Lf = q * S_front * f.Cl,
-        Lr = q * S_rear * r.Cl,
-        Lg = q * S_floor * Cl_floor;
-      const L = (Lf + Lr + Lg) / 1000; // kN
-      const balF = (Lf / (Lf + Lr + Lg)) * 100;
-      pts.push({ height: h, downforce: L, balanceFront: balF });
+
+      const Lf = q * S_front * f.Cl;
+      const Lr = q * S_rear * r.Cl;
+      const Lg = q * S_floor * Cl_floor;
+
+      const L = (Lf + Lr + Lg) / 1000;
+
+      pts.push({ height: h, downforce: L, balanceFront: (Lf / (Lf + Lr + Lg)) * 100 });
     }
     return pts;
-  }, [q, frontAoA, rearAoA, diffuserEff, drs, diffuserAngle, condFactor]);
+  }, [q, frontAoA, rearAoA, diffuserEff, drs, diffuserAngle]);
 
   function setPreset(name) {
     if (name === "Monza") {
@@ -218,7 +256,6 @@ export default function App() {
       setRideHeight(48);
       setDrs(false);
     } else {
-      // Baseline
       setFrontAoA(8);
       setRearAoA(12);
       setRideHeight(38);
@@ -240,7 +277,7 @@ export default function App() {
     });
   }
 
-  // Arrows scaling for on‑car visualization
+  // ===== Arrows scaling =====
   const arrowScale = 120 / (0.001 + current.L_total / 1000);
   const frontArrow = Math.min(
     120,
@@ -251,91 +288,43 @@ export default function App() {
     (current.L_total > 0 ? current.L_rear / 1000 : 0) * arrowScale
   );
   const dragArrow = Math.min(120, (current.D_total / 1000) * arrowScale);
-  const flowDuration = Math.max(1.2, 9 - speed / 50);
-  const vTop = v * (1 + frontAoA * 0.02);
-  const vBottom = Math.max(0, v * (1 - frontAoA * 0.01));
-  const dpBernoulli = 0.5 * rho * (vBottom * vBottom - vTop * vTop);
 
-  // ===== Track simulation helpers =====
-  const mass = 820; // kg (aprox)
-  const lapProfile = useMemo(() => {
-    if (trackMode === "corner") {
-      return [
-        { s: 0, speed: 80, curvature: 0.08 },
-        { s: 0.25, speed: 90, curvature: 0.12 },
-        { s: 0.5, speed: 100, curvature: 0.16 },
-        { s: 0.75, speed: 90, curvature: 0.1 },
-        { s: 1, speed: 80, curvature: 0.08 }
-      ];
-    }
-    return [
-      { s: 0, speed: 140, curvature: 0.01 },
-      { s: 0.2, speed: 220, curvature: 0.003 },
-      { s: 0.35, speed: 180, curvature: 0.05 },
-      { s: 0.5, speed: 260, curvature: 0.002 },
-      { s: 0.7, speed: 190, curvature: 0.06 },
-      { s: 0.85, speed: 140, curvature: 0.1 },
-      { s: 1, speed: 140, curvature: 0.01 }
-    ];
-  }, [trackMode]);
-
-  useEffect(() => {
-    if (!playingLap) return;
-    const timer = setInterval(() => {
-      setLapProgress((p) => {
-        const next = p + 0.01;
-        return next > 1 ? 0 : next;
-      });
-    }, 80);
-    return () => clearInterval(timer);
-  }, [playingLap]);
-
-  function interpProfile(progress) {
-    const list = lapProfile;
-    for (let i = 0; i < list.length - 1; i++) {
-      const a = list[i];
-      const b = list[i + 1];
-      if (progress >= a.s && progress <= b.s) {
-        const t = (progress - a.s) / (b.s - a.s || 1);
-        return {
-          speed: a.speed + (b.speed - a.speed) * t,
-          curvature: a.curvature + (b.curvature - a.curvature) * t
-        };
-      }
-    }
-    return list[list.length - 1];
-  }
-
-  const lapState = interpProfile(lapProgress);
-  const radius = lapState.curvature > 0 ? 1 / lapState.curvature : 9999;
-  const vTrack = lapState.speed / 3.6;
-  const normalForce = mass * 9.81 + current.L_total; // N
-  const mu = tyreGrip;
-  const availableGrip = mu * normalForce; // N
-  const requiredGrip = (vTrack * vTrack * mass) / Math.max(radius, 1); // N
-  const gripRatio = availableGrip > 0 ? requiredGrip / availableGrip : 0;
-
+  /* -------------------------------------------------------
+                ** RETURN DEL COMPONENTE **
+  -------------------------------------------------------*/
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", overflowX: "hidden" }}>
-      {/* Header */}
-      <Box sx={{
-        height: 80,
-        borderBottom: "2px solid #e5e7eb",
-        bgcolor: "linear-gradient(135deg, #ffffff 0%, #f8fffe 100%)",
+    <Box
+      sx={{
         display: "flex",
-        alignItems: "center",
-        px: 3,
-        gap: 3,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-      }}>
+        flexDirection: "column",
+        minHeight: "100vh",
+        overflowX: "hidden"
+      }}
+    >
+      {/* HEADER */}
+      <Box
+        sx={{
+          height: 80,
+          borderBottom: "2px solid #e5e7eb",
+          bgcolor: "linear-gradient(135deg, #ffffff 0%, #f8fffe 100%)",
+          display: "flex",
+          alignItems: "center",
+          px: 3,
+          gap: 3,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+        }}
+      >
         <img src="/logo.png" alt="Col·legi Montserrat" style={{ height: 60 }} />
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" fontWeight={700} sx={{
-            background: "linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text"
-          }}>
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            sx={{
+              background: "linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent"
+            }}
+          >
             Simulador d'Aerodinàmica F1
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -344,8 +333,13 @@ export default function App() {
         </Box>
       </Box>
 
+      {/* MOBILE BUTTONS */}
       {isMobile && (
-        <Stack direction="row" spacing={1.5} sx={{ p: 2, bgcolor: "#e0f2fe", borderBottom: "1px solid #cbd5f5" }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ p: 2, bgcolor: "#e0f2fe", borderBottom: "1px solid #cbd5f5" }}
+        >
           <Button
             variant={showControls ? "contained" : "outlined"}
             color="primary"
@@ -354,6 +348,7 @@ export default function App() {
           >
             {showControls ? "Amaga controls" : "Mostra controls"}
           </Button>
+
           <Button
             variant={showKPIs ? "contained" : "outlined"}
             color="primary"
@@ -365,7 +360,7 @@ export default function App() {
         </Stack>
       )}
 
-      {/* Responsive Layout */}
+      {/* LAYOUT PRINCIPAL */}
       <Box
         sx={{
           display: "flex",
@@ -375,7 +370,7 @@ export default function App() {
           gap: isMobile ? 2 : 0
         }}
       >
-        {/* Controls Panel */}
+        {/* CONTROL PANEL */}
         {showControls ? (
           <ControlsPanel
             speed={speed}
@@ -401,357 +396,295 @@ export default function App() {
           />
         ) : (
           !isMobile && (
-          <Box
-            sx={{
-              width: 28,
-              flexShrink: 0,
-              borderRight: "1px solid #e5e7eb",
-              bgcolor: "#e0f2fe",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <Tooltip title="Mostra els controls">
-              <IconButton
-                size="small"
-                onClick={() => setShowControls(true)}
-                sx={{ color: "#1d4ed8" }}
-              >
-                <ChevronRightIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
+            <Box
+              sx={{
+                width: 28,
+                flexShrink: 0,
+                borderRight: "1px solid #e5e7eb",
+                bgcolor: "#e0f2fe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              <Tooltip title="Mostra els controls">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowControls(true)}
+                  sx={{ color: "#1d4ed8" }}
+                >
+                  <ChevronRightIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           )
         )}
 
-        {/* Main Content */}
-        <Box sx={{ flex: 1, overflowY: "auto", bgcolor: "#fff", p: isMobile ? 2 : 3 }}>
-            <Tabs
-              value={tab}
-              onChange={(_, v) => setTab(v)}
-              variant="scrollable"
-              scrollButtons="auto"
-              allowScrollButtonsMobile
-              sx={{
-                "& .MuiTabs-scrollButtons": {
-                  color: "#1d4ed8",
-                  opacity: 1
-                },
-                "& .MuiTabs-scrollButtons.Mui-disabled": {
-                  opacity: 0.3
-                }
-              }}
-            >
-              <Tab label="Visualització" value="visual" />
-              <Tab label="Gràfiques" value="charts" />
-              <Tab label="Perfils ales" value="wings" />
-              <Tab label="Editor difusor" value="diffuser" />
-              {snapshot && <Tab label="Comparació" value="compare" />}
-              <Tab label="Vista pista" value="track" />
-              <Tab label="Aprendre" value="learn" />
-            </Tabs>
+        {/* MAIN CONTENT */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: "auto",
+            bgcolor: "#fff",
+            p: isMobile ? 2 : 3
+          }}
+        >
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            <Tab label="Visualització" value="visual" />
+            <Tab label="Gràfiques" value="charts" />
+            <Tab label="Perfils ales" value="wings" />
+            <Tab label="Editor difusor" value="diffuser" />
+            {snapshot && <Tab label="Comparació" value="compare" />}
+            <Tab label="Aprendre" value="learn" />
+          </Tabs>
 
-          {/* Tab Content */}
           <Box sx={{ mt: 2 }}>
+            {/* ======== VISUAL ======== */}
             {tab === "visual" && (
               <Box>
-                <Typography variant="subtitle2" gutterBottom>Visualització del cotxe amb forces aerodinàmiques</Typography>
-                <Box sx={{ position: "relative", width: "100%", pt: "45%", borderRadius: 2, bgcolor: "#eef2f7" }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Visualització del cotxe amb forces aerodinàmiques
+                </Typography>
+
+                <Box
+                  sx={{
+                    position: "relative",
+                    width: "100%",
+                    pt: "45%",
+                    borderRadius: 2,
+                    bgcolor: "#eef2f7"
+                  }}
+                >
                   <svg viewBox="0 0 600 270" style={{ position: "absolute", inset: 0 }}>
                     <defs>
-                      <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                      <marker
+                        id="arrow"
+                        markerWidth="10"
+                        markerHeight="10"
+                        refX="8"
+                        refY="3"
+                        orient="auto"
+                        markerUnits="strokeWidth"
+                      >
                         <path d="M0,0 L0,6 L9,3 z" fill="currentColor" />
                       </marker>
                     </defs>
+
                     <g transform="translate(100,40)">
-                      <rect x="90" y="40" width="220" height="120" rx="14" fill="#fff" stroke="#e5e7eb" />
-                      <rect x="60" y="70" width="30" height="60" rx="8" fill="#f1f5f9" stroke="#e5e7eb" />
+                      <rect
+                        x="90"
+                        y="40"
+                        width="220"
+                        height="120"
+                        rx="14"
+                        fill="#fff"
+                        stroke="#e5e7eb"
+                      />
+                      <rect
+                        x="60"
+                        y="70"
+                        width="30"
+                        height="60"
+                        rx="8"
+                        fill="#f1f5f9"
+                        stroke="#e5e7eb"
+                      />
                       <rect x="30" y="55" width="30" height="90" rx="6" fill="#111827" />
-                      <rect x="310" y="60" width="22" height="100" rx="4" fill={drs ? "#059669" : "#111827"} />
+                      <rect
+                        x="310"
+                        y="60"
+                        width="22"
+                        height="100"
+                        rx="4"
+                        fill={drs ? "#059669" : "#111827"}
+                      />
                       <rect x="110" y="30" width="40" height="30" rx="6" fill="#111827" />
                       <rect x="110" y="140" width="40" height="30" rx="6" fill="#111827" />
                       <rect x="250" y="30" width="40" height="30" rx="6" fill="#111827" />
                       <rect x="250" y="140" width="40" height="30" rx="6" fill="#111827" />
 
-                      <line x1="70" y1="100" x2={70} y2={100 + frontArrow} stroke="#2563eb" strokeWidth={6} markerEnd="url(#arrow)" />
-                      <line x1="320" y1="110" x2={320} y2={110 + rearArrow} stroke="#2563eb" strokeWidth={6} markerEnd="url(#arrow)" />
-                      <line x1="360" y1="100" x2={360 + dragArrow} y2={100} stroke="#dc2626" strokeWidth={6} markerEnd="url(#arrow)" />
+                      <line
+                        x1="70"
+                        y1="100"
+                        x2={70}
+                        y2={100 + frontArrow}
+                        stroke="#2563eb"
+                        strokeWidth={6}
+                        markerEnd="url(#arrow)"
+                      />
+                      <line
+                        x1="320"
+                        y1="110"
+                        x2={320}
+                        y2={110 + rearArrow}
+                        stroke="#2563eb"
+                        strokeWidth={6}
+                        markerEnd="url(#arrow)"
+                      />
+                      <line
+                        x1="360"
+                        y1="100"
+                        x2={360 + dragArrow}
+                        y2="100"
+                        stroke="#dc2626"
+                        strokeWidth={6}
+                        markerEnd="url(#arrow)"
+                      />
                     </g>
                   </svg>
-                  <Typography variant="caption" sx={{ position: "absolute", top: 8, left: 8, bgcolor: "rgba(255,255,255,.8)", px: 1, borderRadius: 1, color: "#0f172a" }}>
-                    <Box component="span" sx={{ color: "#1d4ed8", fontWeight: 600 }}>Blau</Box>: càrrega ·{" "}
-                    <Box component="span" sx={{ color: "#dc2626", fontWeight: 600 }}>Vermell</Box>: resistència
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      position: "absolute",
+                      top: 8,
+                      left: 8,
+                      bgcolor: "rgba(255,255,255,.8)",
+                      px: 1,
+                      borderRadius: 1
+                    }}
+                  >
+                    <span style={{ color: "#1d4ed8", fontWeight: 600 }}>Blau</span>: càrrega —
+                    <span style={{ color: "#dc2626", fontWeight: 600 }}> Vermell</span>: resistència
                   </Typography>
                 </Box>
               </Box>
             )}
 
-          {tab === "charts" && (
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>Forces vs velocitat</Typography>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">Forces amb la configuració actual</Typography>
-                  <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={() => downloadCSV(sweep)}>
+            {/* ======== CHARTS ======== */}
+            {tab === "charts" && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Forces vs velocitat
+                </Typography>
+
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ mb: 1 }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    Forces amb la configuració actual
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<DownloadIcon />}
+                    onClick={() => downloadCSV(sweep)}
+                  >
                     CSV
                   </Button>
                 </Stack>
+
                 <Box sx={{ width: "100%", height: 340 }}>
                   <ResponsiveContainer>
-                    <LineChart data={sweep} margin={{ left: 12, right: 12, top: 10, bottom: 10 }}>
+                    <LineChart
+                      data={sweep}
+                      margin={{ left: 12, right: 12, top: 10, bottom: 10 }}
+                    >
                       <XAxis dataKey="speed" tickFormatter={(v) => `${v} km/h`} />
                       <YAxis tickFormatter={(v) => `${v} kN`} />
                       <RTooltip formatter={(v) => `${Number(v).toFixed(2)} kN`} />
                       <Legend />
-                      <Line type="monotone" dataKey="downforce" name="Càrrega total" stroke="#1d4ed8" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="drag" name="Resistència" stroke="#dc2626" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="front" name="Eix davanter" stroke="#0d9488" strokeWidth={1.8} dot={false} strokeDasharray="4 4" />
-                      <Line type="monotone" dataKey="rear" name="Eix posterior" stroke="#7c3aed" strokeWidth={1.8} dot={false} strokeDasharray="4 4" />
-                      <Line type="monotone" dataKey="floor" name="Terra (efecte terra)" stroke="#f59e0b" strokeWidth={1.8} dot={false} strokeDasharray="2 6" />
+
+                      <Line
+                        type="monotone"
+                        dataKey="downforce"
+                        name="Càrrega total"
+                        stroke="#1d4ed8"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="drag"
+                        name="Resistència"
+                        stroke="#dc2626"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="front"
+                        name="Eix davanter"
+                        stroke="#0d9488"
+                        strokeWidth={1.8}
+                        dot={false}
+                        strokeDasharray="4 4"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rear"
+                        name="Eix posterior"
+                        stroke="#7c3aed"
+                        strokeWidth={1.8}
+                        dot={false}
+                        strokeDasharray="4 4"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="floor"
+                        name="Terra (efecte terra)"
+                        stroke="#f59e0b"
+                        strokeWidth={1.8}
+                        dot={false}
+                        strokeDasharray="2 6"
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </Box>
 
                 <Divider sx={{ my: 3 }} />
 
-                <Typography variant="subtitle2" gutterBottom>Sensibilitat a l'alçada</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>A la velocitat actual</Typography>
+                <Typography variant="subtitle2" gutterBottom>
+                  Sensibilitat a l'alçada
+                </Typography>
+
                 <Box sx={{ width: "100%", height: 340 }}>
                   <ResponsiveContainer>
-                    <AreaChart data={rideSweep} margin={{ left: 12, right: 12, top: 10, bottom: 10 }}>
+                    <AreaChart
+                      data={rideSweep}
+                      margin={{ left: 12, right: 12, top: 10, bottom: 10 }}
+                    >
                       <XAxis dataKey="height" tickFormatter={(v) => `${v} mm`} />
                       <YAxis yAxisId="L" tickFormatter={(v) => `${v} kN`} />
                       <YAxis yAxisId="B" orientation="right" tickFormatter={(v) => `${v}%`} />
                       <RTooltip />
                       <Legend />
-                      <Area yAxisId="L" type="monotone" dataKey="downforce" name="Càrrega" strokeWidth={2} dot={false} fillOpacity={0.1} />
-                    <Line yAxisId="B" type="monotone" dataKey="balanceFront" name="Balanç davanter" strokeWidth={2} dot={false} />
-                      <ReferenceLine x={rideHeight} strokeDasharray="3 3" label={`actual ${rideHeight}mm`} />
+
+                      <Area
+                        yAxisId="L"
+                        type="monotone"
+                        dataKey="downforce"
+                        stroke="#1d4ed8"
+                        strokeWidth={2}
+                        fillOpacity={0.1}
+                      />
+
+                      <Line
+                        yAxisId="B"
+                        type="monotone"
+                        dataKey="balanceFront"
+                        name="Balanç davanter"
+                        stroke="#dc2626"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+
+                      <ReferenceLine
+                        x={rideHeight}
+                        strokeDasharray="3 3"
+                        label={`actual ${rideHeight}mm`}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
-              </Box>
-            </Box>
-          )}
-
-          {tab === "track" && (
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>Simulació de pista</Typography>
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
-                <Stack direction="row" spacing={1}>
-                  <Button variant={trackMode === "lap" ? "contained" : "outlined"} size="small" onClick={() => setTrackMode("lap")}>Volta sencera</Button>
-                  <Button variant={trackMode === "corner" ? "contained" : "outlined"} size="small" onClick={() => setTrackMode("corner")}>Corba única</Button>
-                </Stack>
-                <Stack direction="row" spacing={1}>
-                  <Button variant={playingLap ? "contained" : "outlined"} size="small" onClick={() => setPlayingLap((p) => !p)}>
-                    {playingLap ? "Pausa" : "Play"}
-                  </Button>
-                  <Button variant="outlined" size="small" onClick={() => setLapProgress(0)}>Reset volta</Button>
-                </Stack>
-                <Stack direction="row" spacing={1}>
-                  <Button size="small" variant={trackCondition === "sec" ? "contained" : "outlined"} onClick={() => setTrackCondition("sec")}>Sec</Button>
-                  <Button size="small" variant={trackCondition === "pluja" ? "contained" : "outlined"} onClick={() => setTrackCondition("pluja")}>Pluja</Button>
-                  <Button size="small" variant={trackCondition === "aire_brut" ? "contained" : "outlined"} onClick={() => setTrackCondition("aire_brut")}>Aire brut</Button>
-                </Stack>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="body2">Grip pneumàtics</Typography>
-                  <Slider value={tyreGrip} min={0.8} max={1.6} step={0.05} onChange={(_, v) => setTyreGrip(v)} sx={{ width: 140 }} />
-                  <Typography variant="caption">{tyreGrip.toFixed(2)} μ</Typography>
-                </Stack>
-              </Stack>
-
-              <Box sx={{ position: "relative", width: "100%", height: 320, bgcolor: "#0b1021", borderRadius: 2, overflow: "hidden", mb: 2 }}>
-                <svg viewBox="0 0 700 320" style={{ position: "absolute", inset: 0 }}>
-                  <rect x="0" y="0" width="700" height="320" fill="#0b1021" />
-                  <polyline
-                    points={trackMode === "lap"
-                      ? "80,250 180,180 260,190 340,120 460,140 580,90 620,140 520,200 400,190 300,230 200,260 100,240"
-                      : "120,240 200,200 280,160 360,180 440,200 520,240"}
-                    fill="none"
-                    stroke="#6ee7ff"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="8 8"
-                  />
-                  {/* Car position */}
-                  {(() => {
-                    const t = lapProgress;
-                    const pathPoints = (trackMode === "lap"
-                      ? [[80, 250], [180, 180], [260, 190], [340, 120], [460, 140], [580, 90], [620, 140], [520, 200], [400, 190], [300, 230], [200, 260], [100, 240]]
-                      : [[120, 240], [200, 200], [280, 160], [360, 180], [440, 200], [520, 240]]);
-                    const idx = Math.floor(t * (pathPoints.length - 1));
-                    const frac = t * (pathPoints.length - 1) - idx;
-                    const [x1, y1] = pathPoints[idx];
-                    const [x2, y2] = pathPoints[Math.min(idx + 1, pathPoints.length - 1)];
-                    const carX = x1 + (x2 - x1) * frac;
-                    const carY = y1 + (y2 - y1) * frac;
-                    const downArrow = Math.min(80, (current.L_total / 1000) * 4);
-                    const dragArrowTrack = Math.min(80, (current.D_total / 1000) * 4);
-                    const lateralArrow = Math.min(80, gripRatio * 40);
-                    return (
-                      <g>
-                        <rect x={carX - 12} y={carY - 6} width="24" height="12" rx="4" fill="#fbbf24" stroke="#f59e0b" />
-                        <line x1={carX} y1={carY} x2={carX} y2={carY + downArrow} stroke="#3b82f6" strokeWidth="5" markerEnd="url(#arrowBlue)" />
-                        <line x1={carX} y1={carY} x2={carX + dragArrowTrack} y2={carY} stroke="#dc2626" strokeWidth="5" markerEnd="url(#arrowRed)" />
-                        <line x1={carX} y1={carY} x2={carX - lateralArrow} y2={carY - lateralArrow * 0.4} stroke="#22c55e" strokeWidth="4" markerEnd="url(#arrowBlue)" />
-                      </g>
-                    );
-                  })()}
-                  <defs>
-                    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-                      <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6" />
-                    </marker>
-                    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-                      <path d="M0,0 L0,6 L9,3 z" fill="#dc2626" />
-                    </marker>
-                  </defs>
-                </svg>
-              </Box>
-
-              <Card sx={{ mb: 2 }}>
-                <CardContent>
-                  <Typography variant="subtitle2">Grip disponible vs necessari</Typography>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2">Velocitat tram: {lapState.speed} km/h</Typography>
-                      <Typography variant="body2">Radi aprox.: {radius.toFixed(0)} m</Typography>
-                      <Typography variant="body2">Grip disponible: {(availableGrip / 1000).toFixed(1)} kN</Typography>
-                      <Typography variant="body2">Grip necessari: {(requiredGrip / 1000).toFixed(1)} kN</Typography>
-                      <Typography variant="body2" color={gripRatio > 1 ? "error" : "success.main"}>
-                        {gripRatio > 1 ? "Risc de derrapatge (over/understeer)" : "Dins del límit de grip"}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ flex: 1, height: 140, position: "relative", bgcolor: "#f8fafc", borderRadius: 2, p: 2 }}>
-                      <Box sx={{ position: "absolute", bottom: 20, left: 30, right: 30 }}>
-                        <Box sx={{ height: 12, bgcolor: "#e5e7eb", borderRadius: 1, mb: 1 }}>
-                          <Box sx={{ width: `${Math.min(100, gripRatio * 100)}%`, height: "100%", bgcolor: gripRatio > 1 ? "#ef4444" : "#22c55e", borderRadius: 1 }} />
-                        </Box>
-                        <Typography variant="caption">Relació necessari/disponible</Typography>
-                      </Box>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Box>
-          )}
-
-            {tab === "diffuser" && (
-              <Box>
-                <Typography variant="h6" gutterBottom>Editor interactiu del difusor</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Canvia l'angle del difusor per veure com afecta l'efecte terra i les forces generades. El difusor accelera l'aire sota el cotxe creant baixa pressió.
-                </Typography>
-                <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
-                  <Box sx={{ flex: 2 }}>
-                    <Card sx={{ bgcolor: "#f8fafc", border: "1px solid #e5e7eb" }}>
-                      <CardContent>
-                        <Typography variant="subtitle2" sx={{ mb: 1 }}>Vista lateral del difusor</Typography>
-                        <Box sx={{ width: "100%", height: 300, position: "relative" }}>
-                          <svg viewBox="0 0 600 300" style={{ width: "100%", height: "100%" }}>
-                            <defs>
-                              <linearGradient id="groundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stopColor="#64748b" />
-                                <stop offset="100%" stopColor="#475569" />
-                              </linearGradient>
-                              <linearGradient id="floorGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stopColor="#1e293b" />
-                                <stop offset="100%" stopColor="#0f172a" />
-                              </linearGradient>
-                            </defs>
-
-                            {/* Ground */}
-                            <rect x="0" y="220" width="600" height="80" fill="url(#groundGradient)" />
-
-                            {/* Floor underbody */}
-                            <path
-                              d={`M 100 ${200 - rideHeight * 0.8} L 300 ${200 - rideHeight * 0.8} L ${300 + 200 * Math.cos(degToRad(diffuserAngle))} ${200 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L 520 ${200 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L 520 ${190 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L ${300 + 200 * Math.cos(degToRad(diffuserAngle))} ${190 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L 300 ${190 - rideHeight * 0.8} L 100 ${190 - rideHeight * 0.8} Z`}
-                              fill="url(#floorGradient)"
-                              stroke="#0ea5e9"
-                              strokeWidth="2"
-                            />
-
-                            {/* Diffuser angle indicator */}
-                            <line
-                              x1="300"
-                              y1={200 - rideHeight * 0.8}
-                              x2={300 + 120 * Math.cos(degToRad(diffuserAngle))}
-                              y2={200 - rideHeight * 0.8 - 120 * Math.sin(degToRad(diffuserAngle))}
-                              stroke="#f59e0b"
-                              strokeWidth="3"
-                              strokeDasharray="5,5"
-                            />
-
-                            {/* Angle arc */}
-                            <path
-                              d={`M 420 ${200 - rideHeight * 0.8} A 120 120 0 0 0 ${420 - 120 * (1 - Math.cos(degToRad(diffuserAngle)))} ${200 - rideHeight * 0.8 - 120 * Math.sin(degToRad(diffuserAngle))}`}
-                              fill="none"
-                              stroke="#f59e0b"
-                              strokeWidth="2"
-                            />
-
-                            <text x="440" y={195 - rideHeight * 0.8 - diffuserAngle * 1.5} fill="#f59e0b" fontSize="18" fontWeight="bold">{diffuserAngle.toFixed(1)}°</text>
-
-                            {/* Ride height indicator */}
-                            <line x1="100" y1="220" x2="100" y2={200 - rideHeight * 0.8} stroke="#0ea5e9" strokeWidth="2" />
-                            <text x="50" y={210 - rideHeight * 0.4} fill="#0ea5e9" fontSize="14" fontWeight="bold">{rideHeight}mm</text>
-
-                            {/* Airflow lines */}
-                            {[0, 1, 2, 3].map((i) => (
-                              <path
-                                key={i}
-                                className="flow-path"
-                                d={`M 50 ${230 + i * 8} Q 200 ${225 + i * 8} 300 ${215 - rideHeight * 0.3 + i * 6} T ${400 + 100 * Math.cos(degToRad(diffuserAngle))} ${180 - rideHeight * 0.8 - 100 * Math.sin(degToRad(diffuserAngle)) + i * 8}`}
-                                style={{ animationDelay: `${-i * 0.3}s` }}
-                              />
-                            ))}
-
-                            {/* Labels */}
-                            <text x="180" y="50" fontSize="16" fontWeight="bold" fill="#0f172a">Entrada del difusor</text>
-                            <text x="380" y="50" fontSize="16" fontWeight="bold" fill="#0f172a">Sortida del difusor</text>
-                          </svg>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Box>
-
-                  <Box sx={{ flex: 1 }}>
-                    <Stack spacing={2}>
-                      <Card>
-                        <CardContent>
-                          <Typography variant="subtitle2" gutterBottom>Càrrega del terra actual</Typography>
-                          <Typography variant="h4" color="primary">{(current.L_floor / 1000).toFixed(2)} kN</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {((current.L_floor / current.L_total) * 100).toFixed(0)}% del total
-                          </Typography>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent>
-                          <Typography variant="subtitle2" gutterBottom>Com funciona?</Typography>
-                          <Typography variant="body2" sx={{ fontSize: 13 }}>
-                            El difusor expandeix l'àrea sota el cotxe, accelerant l'aire segons el principi de Bernoulli.
-                            Aire més ràpid = menor pressió = més càrrega cap avall.
-                          </Typography>
-                          <Divider sx={{ my: 1 }} />
-                          <Typography variant="caption" display="block"><b>Angle òptim:</b> 10-15°</Typography>
-                          <Typography variant="caption" display="block"><b>Molt baix (&lt;8°):</b> Poca expansió</Typography>
-                          <Typography variant="caption" display="block"><b>Molt alt (&gt;18°):</b> Separació del flux</Typography>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent>
-                          <Typography variant="subtitle2" gutterBottom>Efecte Venturi</Typography>
-                          <Typography variant="body2" sx={{ fontSize: 13 }}>
-                            Alçada baixa + angle correcte = efecte Venturi màxim.
-                            L'aire es comprimeix i accelera sota el cotxe, creant baixa pressió.
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Stack>
-                  </Box>
-                </Stack>
+                </Box>
               </Box>
             )}
 
@@ -898,133 +831,237 @@ export default function App() {
               </Box>
             )}
 
-            {tab === "compare" && snapshot && (
+            {tab === "diffuser" && (
               <Box>
-                <Typography variant="h6" gutterBottom>Comparació costat a costat</Typography>
+                <Typography variant="h6" gutterBottom>Editor interactiu del difusor</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Compara la teva configuració actual (B) amb la instantània guardada (A) per entendre l'impacte dels canvis.
+                Canvia l'angle del difusor per veure com afecta l'efecte terra i les forces generades. El difusor accelera l'aire sota el cotxe creant baixa pressió.
                 </Typography>
+                <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
+                  <Box sx={{ flex: 2 }}>
+                    <Card sx={{ bgcolor: "#f8fafc", border: "1px solid #e5e7eb" }}>
+                      <CardContent>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>Vista lateral del difusor</Typography>
+                        <Box sx={{ width: "100%", height: 300, position: "relative" }}>
+                          <svg viewBox="0 0 600 300" style={{ width: "100%", height: "100%" }}>
+                            <defs>
+                              <linearGradient id="groundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#64748b" />
+                                <stop offset="100%" stopColor="#475569" />
+                              </linearGradient>
+                              <linearGradient id="floorGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#1e293b" />
+                                <stop offset="100%" stopColor="#0f172a" />
+                              </linearGradient>
+                            </defs>
 
-                <Stack direction={{ xs: "column", lg: "row" }} spacing={2} sx={{ mb: 2 }}>
-                  {/* Configuration A (Snapshot) */}
-                  <Card sx={{ flex: 1, border: "2px solid #0ea5e9" }}>
-                    <CardContent>
-                      <Typography variant="subtitle2" gutterBottom color="primary">Configuració A (Instantània)</Typography>
-                      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mt: 1 }}>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Velocitat</Typography>
-                          <Typography variant="body2" fontWeight="bold">{snapshot.speed} km/h</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Alçada</Typography>
-                          <Typography variant="body2" fontWeight="bold">{snapshot.rideHeight} mm</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Ala davanter</Typography>
-                          <Typography variant="body2" fontWeight="bold">{snapshot.frontAoA}°</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Ala posterior</Typography>
-                          <Typography variant="body2" fontWeight="bold">{snapshot.rearAoA}°</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Difusor</Typography>
-                          <Typography variant="body2" fontWeight="bold">{snapshot.diffuserAngle?.toFixed(1) || "12.0"}°</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">DRS</Typography>
-                          <Typography variant="body2" fontWeight="bold">{snapshot.drs ? "Obert" : "Tancat"}</Typography>
-                        </Box>
-                      </Box>
-                      <Divider sx={{ my: 1.5 }} />
-                      <Typography variant="caption" display="block"><b>Càrrega total:</b> {(snapshot.result.L_total / 1000).toFixed(2)} kN</Typography>
-                      <Typography variant="caption" display="block"><b>Drag total:</b> {(snapshot.result.D_total / 1000).toFixed(2)} kN</Typography>
-                      <Typography variant="caption" display="block"><b>Balanç:</b> {snapshot.result.balanceFront.toFixed(1)}%</Typography>
-                      <Typography variant="caption" display="block"><b>L/D:</b> {(snapshot.result.L_total / snapshot.result.D_total).toFixed(2)}</Typography>
-                    </CardContent>
-                  </Card>
+                            {/* Ground */}
+                            <rect x="0" y="220" width="600" height="80" fill="url(#groundGradient)" />
 
-                  {/* Configuration B (Current) */}
-                  <Card sx={{ flex: 1, border: "2px solid #10b981" }}>
-                    <CardContent>
-                      <Typography variant="subtitle2" gutterBottom sx={{ color: "#10b981" }}>Configuració B (Actual)</Typography>
-                      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mt: 1 }}>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Velocitat</Typography>
-                          <Typography variant="body2" fontWeight="bold">{speed} km/h</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Alçada</Typography>
-                          <Typography variant="body2" fontWeight="bold">{rideHeight} mm</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Ala davanter</Typography>
-                          <Typography variant="body2" fontWeight="bold">{frontAoA}°</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Ala posterior</Typography>
-                          <Typography variant="body2" fontWeight="bold">{rearAoA}°</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Difusor</Typography>
-                          <Typography variant="body2" fontWeight="bold">{diffuserAngle.toFixed(1)}°</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">DRS</Typography>
-                          <Typography variant="body2" fontWeight="bold">{drs ? "Obert" : "Tancat"}</Typography>
-                        </Box>
-                      </Box>
-                      <Divider sx={{ my: 1.5 }} />
-                      <Typography variant="caption" display="block"><b>Càrrega total:</b> {(current.L_total / 1000).toFixed(2)} kN</Typography>
-                      <Typography variant="caption" display="block"><b>Drag total:</b> {(current.D_total / 1000).toFixed(2)} kN</Typography>
-                      <Typography variant="caption" display="block"><b>Balanç:</b> {current.balanceFront.toFixed(1)}%</Typography>
-                      <Typography variant="caption" display="block"><b>L/D:</b> {(current.L_total / current.D_total).toFixed(2)}</Typography>
-                    </CardContent>
-                  </Card>
-                </Stack>
+                            {/* Floor underbody */}
+                            <path
+                              d={`M 100 ${200 - rideHeight * 0.8} L 300 ${200 - rideHeight * 0.8} L ${300 + 200 * Math.cos(degToRad(diffuserAngle))} ${200 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L 520 ${200 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L 520 ${190 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L ${300 + 200 * Math.cos(degToRad(diffuserAngle))} ${190 - rideHeight * 0.8 - 200 * Math.sin(degToRad(diffuserAngle))} L 300 ${190 - rideHeight * 0.8} L 100 ${190 - rideHeight * 0.8} Z`}
+                              fill="url(#floorGradient)"
+                              stroke="#0ea5e9"
+                              strokeWidth="2"
+                            />
 
-                {/* Differences */}
-                <Card sx={{ bgcolor: "#fef3c7" }}>
-                  <CardContent>
-                    <Typography variant="subtitle2" gutterBottom>Diferències (B - A)</Typography>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="caption" display="block" gutterBottom>Forces aerodinàmiques</Typography>
-                        <Typography variant="body2">
-                          Càrrega: <b style={{ color: (current.L_total - snapshot.result.L_total) > 0 ? "#10b981" : "#ef4444" }}>
-                            {((current.L_total - snapshot.result.L_total) / 1000).toFixed(2)} kN
-                            ({(((current.L_total - snapshot.result.L_total) / snapshot.result.L_total) * 100).toFixed(1)}%)
-                          </b>
-                        </Typography>
-                        <Typography variant="body2">
-                          Drag: <b style={{ color: (current.D_total - snapshot.result.D_total) > 0 ? "#ef4444" : "#10b981" }}>
-                            {((current.D_total - snapshot.result.D_total) / 1000).toFixed(2)} kN
-                            ({(((current.D_total - snapshot.result.D_total) / snapshot.result.D_total) * 100).toFixed(1)}%)
-                          </b>
-                        </Typography>
-                        <Typography variant="body2">
-                          Balanç: <b>{(current.balanceFront - snapshot.result.balanceFront).toFixed(1)}%</b>
-                        </Typography>
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="caption" display="block" gutterBottom>Per element</Typography>
-                        <Typography variant="body2">
-                          Ala davanter: <b>{((current.L_front - snapshot.result.L_front) / 1000).toFixed(2)} kN</b>
-                        </Typography>
-                        <Typography variant="body2">
-                          Ala posterior: <b>{((current.L_rear - snapshot.result.L_rear) / 1000).toFixed(2)} kN</b>
-                        </Typography>
-                        <Typography variant="body2">
-                          Terra: <b>{((current.L_floor - snapshot.result.L_floor) / 1000).toFixed(2)} kN</b>
-                        </Typography>
-                      </Box>
+                            {/* Diffuser angle indicator */}
+                            <line
+                              x1="300"
+                              y1={200 - rideHeight * 0.8}
+                              x2={300 + 120 * Math.cos(degToRad(diffuserAngle))}
+                              y2={200 - rideHeight * 0.8 - 120 * Math.sin(degToRad(diffuserAngle))}
+                              stroke="#f59e0b"
+                              strokeWidth="3"
+                              strokeDasharray="5,5"
+                            />
+
+                            {/* Angle arc */}
+                            <path
+                              d={`M 420 ${200 - rideHeight * 0.8} A 120 120 0 0 0 ${420 - 120 * (1 - Math.cos(degToRad(diffuserAngle)))} ${200 - rideHeight * 0.8 - 120 * Math.sin(degToRad(diffuserAngle))}`}
+                              fill="none"
+                              stroke="#f59e0b"
+                              strokeWidth="2"
+                            />
+
+                            <text x="440" y={195 - rideHeight * 0.8 - diffuserAngle * 1.5} fill="#f59e0b" fontSize="18" fontWeight="bold">{diffuserAngle.toFixed(1)}°</text>
+
+                            {/* Ride height indicator */}
+                            <line x1="100" y1="220" x2="100" y2={200 - rideHeight * 0.8} stroke="#0ea5e9" strokeWidth="2" />
+                            <text x="50" y={210 - rideHeight * 0.4} fill="#0ea5e9" fontSize="14" fontWeight="bold">{rideHeight}mm</text>
+
+                            {/* Airflow lines */}
+                            {[0, 1, 2, 3].map((i) => (
+                              <path
+                                key={i}
+                                className="flow-path"
+                                d={`M 50 ${230 + i * 8} Q 200 ${225 + i * 8} 300 ${215 - rideHeight * 0.3 + i * 6} T ${400 + 100 * Math.cos(degToRad(diffuserAngle))} ${180 - rideHeight * 0.8 - 100 * Math.sin(degToRad(diffuserAngle)) + i * 8}`}
+                                style={{ animationDelay: `${-i * 0.3}s` }}
+                              />
+                            ))}
+
+                            {/* Labels */}
+                            <text x="180" y="50" fontSize="16" fontWeight="bold" fill="#0f172a">Entrada del difusor</text>
+                            <text x="380" y="50" fontSize="16" fontWeight="bold" fill="#0f172a">Sortida del difusor</text>
+                          </svg>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Box>
+
+                  <Box sx={{ flex: 1 }}>
+                    <Stack spacing={2}>
+                      <Card>
+                        <CardContent>
+                          <Typography variant="subtitle2" gutterBottom>Càrrega del terra actual</Typography>
+                          <Typography variant="h4" color="primary">{(current.L_floor / 1000).toFixed(2)} kN</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {((current.L_floor / current.L_total) * 100).toFixed(0)}% del total
+                          </Typography>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent>
+                          <Typography variant="subtitle2" gutterBottom>Com funciona?</Typography>
+                          <Typography variant="body2" sx={{ fontSize: 13 }}>
+                            El difusor expandeix l'àrea sota el cotxe, accelerant l'aire segons el principi de Bernoulli.
+                            Aire més ràpid = menor pressió = més càrrega cap avall.
+                          </Typography>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant="caption" display="block"><b>Angle òptim:</b> 10-15°</Typography>
+                          <Typography variant="caption" display="block"><b>Molt baix (&lt;8°):</b> Poca expansió</Typography>
+                          <Typography variant="caption" display="block"><b>Molt alt (&gt;18°):</b> Separació del flux</Typography>
+                        </CardContent>
+                      </Card>
+
+                      <Card sx={{ bgcolor: "#fff" }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#059669", mb: 1 }}>
+                            Downforce (càrrega)
+                          </Typography>
+                          <Box sx={{
+                            p: 2,
+                            bgcolor: "#f8fafc",
+                            borderRadius: 2,
+                            fontFamily: "Georgia, serif",
+                            fontSize: 18,
+                            textAlign: "center",
+                            mb: 1
+                          }}>
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>L</Typography>
+                          {" = "}
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>q</Typography>
+                          {" · "}
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>S</Typography>
+                          {" · "}
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>C</Typography>
+                          <sub>L</sub>
+
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            <Typography component="span" sx={{ fontStyle: "italic" }}>L</Typography>: càrrega, {" "}
+                            <Typography component="span" sx={{ fontStyle: "italic", ml: 0.5 }}>q</Typography>: pressió dinàmica, {" "}
+                            <Typography component="span" sx={{ fontStyle: "italic", ml: 0.5 }}>S</Typography>: Àrea de referència, {" "}
+                            <Typography component="span" sx={{ fontStyle: "italic", ml: 0.5 }}>C</Typography>
+                            <sub>L</sub>: coeficient de sustentació.
+                          </Typography>
+                        </CardContent>
+                      </Card>
+
+                      <Card sx={{ bgcolor: "#fff" }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#059669", mb: 1 }}>
+                            Drag (resistència)
+                          </Typography>
+                          <Box sx={{
+                            p: 2,
+                            bgcolor: "#f8fafc",
+                            borderRadius: 2,
+                            fontFamily: "Georgia, serif",
+                            fontSize: 18,
+                            textAlign: "center",
+                            mb: 1
+                          }}>
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>D</Typography>
+                          {" = "}
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>q</Typography>
+                          {" · "}
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>S</Typography>
+                          {" · "}
+                          <Typography component="span" sx={{ fontStyle: "italic" }}>C</Typography>
+                          <sub>D</sub>
+
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            <Typography component="span" sx={{ fontStyle: "italic" }}>D</Typography>: resistència, {" "}
+                            <Typography component="span" sx={{ fontStyle: "italic", ml: 0.5 }}>q</Typography>: pressió dinàmica, {" "}
+                            <Typography component="span" sx={{ fontStyle: "italic", ml: 0.5 }}>S</Typography>: Àrea de referència, {" "}
+                            <Typography component="span" sx={{ fontStyle: "italic", ml: 0.5 }}>C</Typography>
+                            <sub>D</sub>: coeficient de drag.
+                          </Typography>
+                        </CardContent>
+                      </Card>
+
+                      <Card sx={{ bgcolor: "#fff" }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#059669", mb: 1 }}>
+                            Coeficients aerodinàmics
+                          </Typography>
+                          <Box sx={{
+                            p: 2,
+                            bgcolor: "#f8fafc",
+                            borderRadius: 2,
+                            fontFamily: "Georgia, serif",
+                            fontSize: 18,
+                            mb: 1
+                          }}>
+                            <Box sx={{ textAlign: "center", mb: 1 }}>
+                              <Typography component="span" sx={{ fontStyle: "italic" }}>C</Typography>
+                              <sub>L</sub>
+                              {" ≈ "}
+                              <Typography component="span" sx={{ fontStyle: "italic" }}>C</Typography>
+                              <sub>L0</sub>
+                              {" + pendent ? α"}
+                            </Box>
+                            <Box sx={{ textAlign: "center" }}>
+                              <Typography component="span" sx={{ fontStyle: "italic" }}>C</Typography>
+                              <sub>D</sub>
+                              {" ≈ "}
+                              <Typography component="span" sx={{ fontStyle: "italic" }}>C</Typography>
+                              <sub>D0</sub>
+                              {" + "}
+                              <Typography component="span" sx={{ fontStyle: "italic" }}>k</Typography>
+                              {" · "}
+                              <Typography component="span" sx={{ fontStyle: "italic" }}>C</Typography>
+                              <sub>L</sub>
+                              <sup>2</sup>
+                            </Box>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Més angle d'atac (α) → més càrrega, però també més drag induït (creix amb el quadrat de C<sub>L</sub>).
+                          </Typography>
+                        </CardContent>
+                      </Card>
+
+                      <Card sx={{ bgcolor: "#fff" }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#059669", mb: 1 }}>
+                            Efecte terra
+                          </Typography>
+                          <Typography variant="body2">
+                            Més fort a prop del terra; massa baix pot estrangular el flux i causar pèrdua de càrrega. El difusor expandeix gradualment el flux per maximitzar l'efecte Venturi sense separació.
+                          </Typography>
+                        </CardContent>
+                      </Card>
                     </Stack>
-                  </CardContent>
-                </Card>
+                  </Box>
+                </Stack>
               </Box>
             )}
 
-            {tab === "learn" && (
+                        {tab === "learn" && (
               <Box>
                 <Card sx={{ mb: 3, bgcolor: "#f0fdf4", border: "2px solid #10b981" }}>
                   <CardContent>
@@ -1185,10 +1222,10 @@ export default function App() {
                 </Card>
               </Box>
             )}
+            
           </Box>
         </Box>
-
-        {/* KPI Panel */}
+        {/* KPI PANEL */}
         {showKPIs ? (
           <KpiPanel
             current={current}
@@ -1199,27 +1236,27 @@ export default function App() {
           />
         ) : (
           !isMobile && (
-          <Box
-            sx={{
-              width: 28,
-              flexShrink: 0,
-              borderLeft: "1px solid #1d4ed8",
-              bgcolor: "#0b1f4d",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <Tooltip title="Mostra els resultats">
-              <IconButton
-                size="small"
-                onClick={() => setShowKPIs(true)}
-                sx={{ color: "#bfdbfe" }}
-              >
-                <ChevronLeftIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
+            <Box
+              sx={{
+                width: 28,
+                flexShrink: 0,
+                borderLeft: "1px solid #1d4ed8",
+                bgcolor: "#0b1f4d",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              <Tooltip title="Mostra els resultats">
+                <IconButton
+                  size="small"
+                  sx={{ color: "#bfdbfe" }}
+                  onClick={() => setShowKPIs(true)}
+                >
+                  <ChevronLeftIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           )
         )}
       </Box>
@@ -1227,16 +1264,5 @@ export default function App() {
   );
 }
 
-function downloadCSV(rows) {
-  if (!rows || !rows.length) return;
-  const header = Object.keys(rows[0]).join(',');
-  const body = rows.map((r) => Object.values(r).join(',')).join('\n');
-  const csv = header + '\n' + body;
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'aero_data.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-}
+
+           

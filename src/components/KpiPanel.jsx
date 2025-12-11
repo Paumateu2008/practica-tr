@@ -35,19 +35,8 @@ export default function KpiPanel({ current, snapshot, drs, onCollapse, isMobile 
       <KPI dark title="Càrrega total" value={(current.L_total / 1000).toFixed(1)} unit="kN" />
       <KPI dark title="Resistència (drag)" value={(current.D_total / 1000).toFixed(1)} unit="kN" />
       <KPI dark title="Balanç davanter" value={`${current.balanceFront.toFixed(0)}%`} unit="" />
+      <KPI dark title="Balanç posterior" value={`${current.balanceRear.toFixed(0)}%`} unit="" />
       <KPI dark title="Càrrega terra" value={(current.L_floor / 1000).toFixed(1)} unit="kN" />
-      <KPI
-        dark
-        title="Ala davanter Cl/Cd"
-        value={`${current.coeffs.f.Cl.toFixed(2)} / ${current.coeffs.f.Cd.toFixed(2)}`}
-        unit=""
-      />
-      <KPI
-        dark
-        title="Ala posterior Cl/Cd"
-        value={`${current.coeffs.r.Cl.toFixed(2)} / ${current.coeffs.r.Cd.toFixed(2)}`}
-        unit={drs ? "(DRS)" : ""}
-      />
 
       {snapshot && (
         <Card

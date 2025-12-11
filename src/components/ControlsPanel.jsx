@@ -57,8 +57,8 @@ export default function ControlsPanel({
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="h6" fontWeight={600}>
-          Paràmetres
+        <Typography variant="h6" fontWeight={600} sx={{ color: "#0b1f4d" }}>
+          {"Par\u00E0metres"}
         </Typography>
         {onCollapse && !isMobile && (
           <IconButton size="small" onClick={onCollapse} sx={{ color: "#1d4ed8" }}>
@@ -94,7 +94,7 @@ export default function ControlsPanel({
         >
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Typography variant="caption" sx={{ color: "#0f172a", fontWeight: 600 }}>
-              Per què varien els presets?
+              Per què varien les configuracions?
             </Typography>
             <IconButton
               size="small"
@@ -143,7 +143,7 @@ export default function ControlsPanel({
           hint="Afecta totes les forces via V²."
         />
         <LabeledSlider
-          label="Ala davanter (°)"
+          label="Aleró davanter (°)"
           value={frontAoA}
           setValue={setFrontAoA}
           min={0}
@@ -152,7 +152,7 @@ export default function ControlsPanel({
           hint="Més angle → més càrrega i drag."
         />
         <LabeledSlider
-          label="Ala posterior (°)"
+          label="Aleró posterior (°)"
           value={rearAoA}
           setValue={setRearAoA}
           min={0}
@@ -168,15 +168,6 @@ export default function ControlsPanel({
           max={80}
           step={1}
           hint="Més baix → més efecte terra."
-        />
-        <LabeledSlider
-          label="Efic. difusor (-)"
-          value={diffuserEff}
-          setValue={setDiffuserEff}
-          min={0.5}
-          max={1.5}
-          step={0.01}
-          hint="Multiplica la càrrega del terra."
         />
         <LabeledSlider
           label="Angle difusor (°)"
