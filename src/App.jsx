@@ -434,6 +434,15 @@ export default function App() {
             onChange={(_, v) => setTab(v)}
             variant="scrollable"
             scrollButtons="auto"
+            sx={{
+              "& .MuiTabs-scrollButtons": {
+                color: "#1d4ed8",
+                opacity: 1
+              },
+              "& .MuiTabs-scrollButtons.Mui-disabled": {
+                opacity: 0.25
+              }
+            }}
           >
             <Tab label="Visualització" value="visual" />
             <Tab label="Gràfiques" value="charts" />
